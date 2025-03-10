@@ -28,4 +28,37 @@ const uploadFile = async (file) => {
     }
 };
 
-export { uploadFile };
+const createOperationRecord = async (file) => {
+
+    try {
+
+        const response = await axios.post(
+            `${baseUrl}/bulk-uploads/create-bulk`,
+            file,
+        );
+
+        console.log('Upload successful:', response.data);
+        return response.data;
+
+    } catch (error) {
+        console.error('Upload failed:', error.response?.data || error.message);
+        throw error;
+    }
+};
+
+const getAllBulkOperations = async () => {
+
+    try {
+
+        const response = await axios.get(
+            `${baseUrl}/bulk-uploads/get-bulk`,
+        );
+        return response.data;
+
+    } catch (error) {
+        console.error('Failed to fetch datas:', error.response?.data || error.message);
+        throw error;
+    }
+};
+
+export { uploadFile, createOperationRecord, getAllBulkOperations };

@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { uploadFile } from '../service/apiService';
+import React, { useState, useRef, useEffect } from 'react';
+import {  toast } from 'react-toastify';
+import { uploadFile, createOperationRecord, getAllBulkOperations } from '../service/apiService';
 const xlsx = require('xlsx');
 
 const BulkUploads = () => {
@@ -7,10 +8,22 @@ const BulkUploads = () => {
     const formatFileInputRef = useRef(null); // Ref for the "Formatting CSV" file input
     const postingFileInputRef = useRef(null); // Ref for the "Posting CSV" file input
 
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const result = await getAllBulkOperations();
+                setUploads(result.data.reports);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        };
+
+        fetchData();
+    }, []);
+
     const handleFormatUpload = async () => {
         const file = formatFileInputRef.current?.files?.[0];
         if (file) {
-            console.log(file, 'file for formatting');
             try {
                 const result = await uploadFile(file);
                 console.log('Upload success:', result);
@@ -54,6 +67,18 @@ const BulkUploads = () => {
                     const workbook = xlsx.read(data, { type: 'array' });
                     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                     const jsonData = xlsx.utils.sheet_to_json(worksheet);
+
+                    // Validate amounts first
+                    const invalidAmounts = jsonData.some(row => {
+                        const amount = parseFloat(row.amount) || 0;
+                        return amount > 100;
+                    });
+
+                    if (invalidAmounts) {
+                        toast.error('Amount values must be 100 or less');
+                        formatFileInputRef.current.value = '';
+                        return;
+                    }
 
                     // Replace Contact Code values with contact_id while maintaining order
                     const updatedData = jsonData.map((row, index) => ({
@@ -122,6 +147,17 @@ const BulkUploads = () => {
                 const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                 const jsonData = xlsx.utils.sheet_to_json(worksheet);
 
+                const invalidAmounts = jsonData.some(row => {
+                    const amount = parseFloat(row.amount) || 0;
+                    return amount > 100;
+                });
+
+                if (invalidAmounts) {
+                    toast.error('Amount values must be 100 or less');
+                    postingFileInputRef.current.value = '';
+                    return;
+                }
+
                 // 2. Process each row as a separate payload
                 jsonData.forEach(async (row) => {
                     try {
@@ -159,9 +195,14 @@ const BulkUploads = () => {
                             const newRecord = {
                                 batch: `BATCH${Date.now().toString().slice(-4)}`,
                                 file_name: file.name,
-                                date: new Date().toLocaleDateString('en-GB'),
+                                date: Math.floor(Date.now() / 1000),
                                 status: 'running'
                             };
+
+                            const result = await createOperationRecord(newRecord);
+                            console.log('createOperationRecord', result);
+
+
 
                             setUploads([...uploads, newRecord]);
 
@@ -174,6 +215,7 @@ const BulkUploads = () => {
                             }, 3000);
 
                         }
+                        console.log(uploads, 'uploads data')
                     } catch (error) {
                         console.error('Error processing row:', error);
                     }
@@ -206,6 +248,16 @@ const BulkUploads = () => {
             )}
         </span>
     );
+
+    const formatDate = (unixTimestamp) => {
+        const date = new Date(unixTimestamp * 1000); // Convert seconds to milliseconds
+        return date.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
+    };
+
 
     return (
         <div className="bulk-uploads-container">
@@ -258,7 +310,7 @@ const BulkUploads = () => {
                             <tr key={upload.batch}>
                                 <td data-label="Batch #">{upload.batch}</td>
                                 <td data-label="Filename">{upload.file_name}</td>
-                                <td data-label="Date">{upload.date}</td>
+                                <td data-label="Date">{formatDate(upload.date)}</td>
                                 <td data-label="Status">
                                     <StatusBadge status={upload.status} />
                                 </td>
@@ -357,11 +409,14 @@ const BulkUploads = () => {
           border-radius: 12px;
           overflow: hidden;
           box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+          max-height: 300px;
+          overflow: auto;
         }
 
         .uploads-table {
           width: 100%;
           border-collapse: collapse;
+          position: relative;
         }
 
         .uploads-table th,
@@ -375,6 +430,9 @@ const BulkUploads = () => {
           background-color: var(--light);
           font-weight: 600;
           color: var(--dark);
+          position: sticky;
+          top: 0;
+          z-index: 1;
         }
 
         .uploads-table tbody tr:last-child td {

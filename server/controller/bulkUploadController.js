@@ -20,6 +20,42 @@ const uploadContacts = async (req, res) => {
     }
 };
 
+const createBulkOperation = async (req, res) => {
+    try {
+        const { batch, file_name, date, status } = req.body;
+
+        if (!batch || !file_name || !date || !status) {
+            return res.status(400).json({ message: 'All fields are required' });
+        }
+
+        const result = await bulkUploadService.createBulkOperation(batch, file_name, date, 'Completed');
+        return res.status(201).json(result);
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+}
+
+const getAllBulkOperations = async (req, res) => {
+    try {
+        const data = await bulkUploadService.getAllBulkOperations();
+
+        res.status(200).json({
+            success: true,
+            message: 'Data fetched successfully',
+            data: data,
+        });
+    } catch (error) {
+        console.error('Error fetching data:', error);
+
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching data',
+            error: error.message,
+        });
+    }
+};
 module.exports = {
-    uploadContacts
+    uploadContacts,
+    createBulkOperation,
+    getAllBulkOperations
 };

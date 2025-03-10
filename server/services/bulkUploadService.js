@@ -1,5 +1,6 @@
 const xlsx = require('xlsx');
 const mongoose = require('mongoose');
+const BulkOperationReports = require('../models/bulkOperationReports');
 
 const processBulkUpload = async (filePath) => {
     // Read Excel file
@@ -23,6 +24,35 @@ const processBulkUpload = async (filePath) => {
     return contacts.map(contact => ({ contact_id: contact.contact_id, contact_code: contact.contact_code }));
 };
 
+const createBulkOperation = async (batch, file_name, date, status) => {
+    try {
+
+        const newReport = new BulkOperationReports({
+            batch, file_name, date, status
+        });
+
+        await newReport.save();
+        return { message: 'Report created successfully', report: newReport };
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+const getAllBulkOperations = async () => {
+    try {
+        // Find all documents in the collection
+        const reports = await BulkOperationReports.find({});
+        return { 
+            message: 'Reports retrieved successfully', 
+            count: reports.length,
+            reports 
+        };
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
 module.exports = {
-    processBulkUpload
+    processBulkUpload,
+    createBulkOperation,
+    getAllBulkOperations
 };
