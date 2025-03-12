@@ -5,21 +5,27 @@ const xlsx = require('xlsx');
 
 const BulkUploads = () => {
     const [uploads, setUploads] = useState([]);
-    const formatFileInputRef = useRef(null); // Ref for the "Formatting CSV" file input
-    const postingFileInputRef = useRef(null); // Ref for the "Posting CSV" file input
+    const formatFileInputRef = useRef(null);
+    const postingFileInputRef = useRef(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalRecords, setTotalRecords] = useState(0);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const result = await getAllBulkOperations();
-                setUploads(result.data.reports);
-            } catch (error) {
-                console.error('Error fetching data:', error);
-            }
-        };
-
-        fetchData();
-    }, []);
+    const fetchData = async () => {
+      try {
+          const result = await getAllBulkOperations(currentPage, itemsPerPage);
+          setUploads(result.data.reports);
+          setTotalPages(result.data.totalPages);
+          setTotalRecords(result.data.totalRecords);
+      } catch (error) {
+          console.error('Error fetching data:', error);
+      }
+  };
+  
+  useEffect(() => {
+      fetchData();
+  }, [currentPage, itemsPerPage]);
 
     const handleFormatUpload = async () => {
         const file = formatFileInputRef.current?.files?.[0];
@@ -152,11 +158,11 @@ const BulkUploads = () => {
                         // 3. Create payload from Excel row data
                         const payload = {
                             id: row['Contact Code'], // Use Contact Code as ID
-                            action: row.action || 'DEBIT', // Default to DEBIT if not specified
-                            entity: row.entity || 'ACCOUNT', // Default to ACCOUNT
-                            amount: parseFloat(row.amount) || 0,
-                            currency_code: row.currency_code || 'MVR',
-                            notes: row.notes || '',
+                            action: row.Action || 'DEBIT', // Default to DEBIT if not specified
+                            entity: row.Entity || 'ACCOUNT', // Default to ACCOUNT
+                            amount: parseFloat(row.Amount) || 0,
+                            currency_code: row['Currency Code'] || 'MVR',
+                            notes: row['Notes'] || '',
                         };
 
                         console.log(payload, 'apyload comes along')
@@ -180,6 +186,7 @@ const BulkUploads = () => {
                         console.log('Post successful:', result);
 
                         if (response.status) {
+                          toast.success('Excel file uploaded successfully');
                             const newRecord = {
                                 batch: `BATCH${Date.now().toString().slice(-4)}`,
                                 file_name: file.name,
@@ -189,7 +196,7 @@ const BulkUploads = () => {
 
                             const result = await createOperationRecord(newRecord);
                             console.log('createOperationRecord', result);
-
+                            fetchData()
 
 
                             setUploads([...uploads, newRecord]);
@@ -202,6 +209,9 @@ const BulkUploads = () => {
                                 postingFileInputRef.current.value = '';
                             }, 3000);
 
+                        }
+                        else {
+                          toast.error('Failed to upload Excel file');
                         }
                         console.log(uploads, 'uploads data')
                     } catch (error) {
@@ -316,6 +326,53 @@ const BulkUploads = () => {
                 </table>
             </div>
 
+            <div className="pagination-controls">
+                <div className="pagination-info">
+                    Showing {(currentPage - 1) * itemsPerPage + 1} - 
+                    {Math.min(currentPage * itemsPerPage, totalRecords)} of {totalRecords} records
+                </div>
+
+                <div className="pagination-buttons">
+                    <button
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                    >
+                        Previous
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                        <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={currentPage === page ? 'active' : ''}
+                        >
+                            {page}
+                        </button>
+                    ))}
+
+                    <button
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                    >
+                        Next
+                    </button>
+                </div>
+
+                <div className="page-size-selector">
+                    <select
+                        value={itemsPerPage}
+                        onChange={(e) => {
+                            setItemsPerPage(Number(e.target.value));
+                            setCurrentPage(1);
+                        }}
+                    >
+                        <option value={10}>10 per page</option>
+                        <option value={25}>25 per page</option>
+                        <option value={50}>50 per page</option>
+                    </select>
+                </div>
+            </div>
+
             <style jsx>{`
         :root {
           --primary: #4361ee;
@@ -327,7 +384,6 @@ const BulkUploads = () => {
         }
 
         .bulk-uploads-container {
-          padding: 2rem;
           max-width: 1200px;
           margin: 0 auto;
           font-family: 'Inter', system-ui, sans-serif;
@@ -531,6 +587,58 @@ const BulkUploads = () => {
           50% { stroke-dasharray: 90,150; stroke-dashoffset: -35; }
           100% { stroke-dasharray: 90,150; stroke-dashoffset: -124; }
         }
+
+        .pagination-controls {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-top: 1rem;
+                    padding: 1rem;
+                    background: white;
+                    border-radius: 8px;
+                }
+
+                .pagination-buttons {
+                    display: flex;
+                    gap: 0.5rem;
+                }
+
+                .pagination-buttons button {
+                    padding: 0.5rem 1rem;
+                    border: 1px solid #e9ecef;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    background: white;
+                    transition: all 0.2s ease;
+                }
+
+                .pagination-buttons button:hover:not(:disabled) {
+                    background: var(--primary);
+                    color: white;
+                    border-color: var(--primary);
+                }
+
+                .pagination-buttons button.active {
+                    background: var(--primary);
+                    color: white;
+                    border-color: var(--primary);
+                }
+
+                .pagination-buttons button:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+
+                .page-size-selector select {
+                    padding: 0.5rem;
+                    border-radius: 6px;
+                    border: 1px solid #e9ecef;
+                }
+
+                .pagination-info {
+                    color: #6c757d;
+                    font-size: 0.9rem;
+                }
       `}</style>
         </div>
     );

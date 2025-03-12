@@ -46,12 +46,14 @@ const createOperationRecord = async (file) => {
     }
 };
 
-const getAllBulkOperations = async () => {
+const getAllBulkOperations = async (page, limit) => {
 
     try {
 
         const response = await axios.get(
-            `${baseUrl}/bulk-uploads/get-bulk`,
+            `${baseUrl}/bulk-uploads/get-bulk`,{
+                params: { page, limit }
+            }
         );
         return response.data;
 

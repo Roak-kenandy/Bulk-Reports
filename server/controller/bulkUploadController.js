@@ -1,5 +1,42 @@
 const bulkUploadService = require('../services/bulkUploadService');
 
+const loginUser = async (req, res) => {
+    const {email, password} = req.body;
+    
+    if(!email || !password){
+        res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    try {
+        const user = await bulkUploadService.loginUser(email, password);
+        res.status(200).json({ message: "Login successful", user});
+    }
+    catch (error) {
+        res.status(401).json({ message: error.message });
+    }
+};
+
+const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const result = await bulkUploadService.forgotPassword(email);
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+const resetPassword = async (req, res) => {
+    try {
+        const { resetToken } = req.body;
+        const { newPassword } = req.body;
+        const result = await bulkUploadService.resetPassword(resetToken, newPassword);
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
 const uploadContacts = async (req, res) => {
     try {
         if (!req.file) {
@@ -37,25 +74,24 @@ const createBulkOperation = async (req, res) => {
 
 const getAllBulkOperations = async (req, res) => {
     try {
-        const data = await bulkUploadService.getAllBulkOperations();
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const data = await bulkUploadService.getAllBulkOperations(page, limit);
 
         res.status(200).json({
             success: true,
             message: 'Data fetched successfully',
-            data: data,
+            data
         });
     } catch (error) {
-        console.error('Error fetching data:', error);
-
-        res.status(500).json({
-            success: false,
-            message: 'Error fetching data',
-            error: error.message,
-        });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 module.exports = {
     uploadContacts,
     createBulkOperation,
-    getAllBulkOperations
+    getAllBulkOperations,
+    loginUser,
+    forgotPassword,
+    resetPassword
 };
