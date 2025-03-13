@@ -228,7 +228,11 @@ const LoginReports = () => {
               <Link
                 component="button"
                 variant="body2"
-                onClick={() => setOpenForgotPassword(true)}
+                onClick={(e) => {
+                    e.preventDefault(); // Prevent form submission
+                    e.stopPropagation(); // Stop event propagation
+                    setOpenForgotPassword(true);
+                  }}
                 sx={{
                   color: '#ffffffcc',
                   textDecoration: 'underline',

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Logout } from '@mui/icons-material';
 import {
   Button,
   Typography,
@@ -13,7 +14,9 @@ import {
   MenuItem,
   CircularProgress,
   Box,
-  IconButton
+  IconButton,
+  Tooltip,
+  Avatar
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CloudUpload, Description, CheckCircle, Autorenew } from '@mui/icons-material';
@@ -48,6 +51,13 @@ const BulkUploads = () => {
   useEffect(() => {
     fetchData();
   }, [currentPage, itemsPerPage]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
+
+    window.location.href = '/login';
+};
 
   const handleFormatUpload = async () => {
     const file = formatFileInputRef.current?.files?.[0];
@@ -382,6 +392,27 @@ const BulkUploads = () => {
                 onChange={handlePostingUpload}
               />
             </MotionButton>
+
+            <Tooltip title="Logout" arrow>
+      <IconButton 
+        onClick={handleLogout} 
+        sx={{ 
+          ml: 2,
+          color: '#C8B560', 
+          transition: 'all 0.3s ease',
+          '&:hover': { 
+            color: '#fff',
+            backgroundColor: '#C8B56044',
+            transform: 'scale(1.1)'
+          },
+          '& .MuiSvgIcon-root': {
+            fontSize: '1.5rem'
+          }
+        }}
+      >
+        <Logout />
+      </IconButton>
+    </Tooltip>
           </div>
         </motion.div>
 
