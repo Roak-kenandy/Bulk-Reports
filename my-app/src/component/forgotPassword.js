@@ -6,7 +6,7 @@ const ForgotPasswordDialog = ({ open, onClose }) => {
 
   const handleSubmit = async () => {
     try {
-      const response = await fetch('http://localhost:5000/bulk-uploads/forgot-password', {
+      const response = await fetch('https://mdnrpt.medianet.mv/bulk-uploads/forgot-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

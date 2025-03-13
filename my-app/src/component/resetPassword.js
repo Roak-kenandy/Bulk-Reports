@@ -20,7 +20,7 @@ const ResetPassword = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/bulk-uploads/reset-password', {
+      const response = await fetch('https://mdnrpt.medianet.mv/bulk-uploads/reset-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
