@@ -9,7 +9,7 @@ import './App.css';
 
 function App() {
   return (
-    <Router basename="/bulk-uploads">
+    <Router>
       <div className="App">
         <ToastContainer
           position="bottom-right"
@@ -27,7 +27,7 @@ function App() {
           <Route path="/login" element={<LoginReports />} />
           <Route path="/reset-password/:resetToken" element={<ResetPassword />} />
           <Route element={<ProtectedRoute />}>
-          <Route path="/operations" element={<BulkUploads />} />
+          <Route path="/bulk-uploads" element={<BulkUploads />} />
           </Route>
         </Routes>
       </div>

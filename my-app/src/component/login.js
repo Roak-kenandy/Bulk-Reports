@@ -38,7 +38,7 @@ const LoginReports = () => {
         localStorage.setItem('token', data.token || 'dummy-token');
         setError('');
         setOpenSnackbar(true);
-        setTimeout(() => navigate('/operations'), 1000);
+        setTimeout(() => navigate('/bulk-uploads'), 1000);
       } else {
         setError(data.message || 'Invalid email or password.');
         setOpenSnackbar(true);
