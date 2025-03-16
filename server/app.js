@@ -7,45 +7,43 @@ const path = require('path');
 
 const app = express();
 
-// Connect to MongoDB Atlas
+// Enable CORS for all routes
+app.use(cors());
+
+//Middleware to parse JSON
+app.use(express.json());    //This is a built-in middleware function in Express. It parses incoming requests with JSON payloads and is based on body-parser.
+
+//Connect to MongoDB Atlas
 connectDB();
 
-// Middleware
-app.use(cors());
-app.use(express.json());
 
-// Compression middleware
 app.use(
   compression({
     level: 6,
     threshold: 100 * 1000,
     filter: (req, res) => {
-      if (req.headers['x-no-compression']) return false;
+      if (req.headers['x-no-compression']) {
+        return false;
+      }
       return compression.filter(req, res);
     }
   })
-);
+)
 
-// API Routes (must come before static files)
+//Define a routes
 app.use('/bulk-uploads', bulkUploadRoutes);
 
-// Static files configuration (for React build)
-const buildPath = path.join(__dirname, '../../my-app/build'); // Adjusted path
-app.use(express.static(buildPath));
+// Serve static files (React/Angular/Vue build)
+app.use(express.static(path.join(__dirname, 'client/build')));
 
-// Client-side routing handler (must be after static files)
+// Handle client-side routing
 app.get('*', (req, res) => {
-  res.sendFile(path.join(buildPath, 'index.html'));
+  res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
 });
 
-// Remove the default route if not needed
-// app.get('/', (req, res) => {
-//   res.send('Hello World!');
-// });
-
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+//Default route
+app.get('/', (req, res) => {
+  res.send('Hello World!');
 });
 
 module.exports = app;
