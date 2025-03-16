@@ -132,14 +132,28 @@ const processBulkUpload = async (filePath) => {
     // Get native collection reference
     const collection = mongoose.connection.db.collection('Journals');
 
-    // Find contacts
-    const contacts = await collection.find(
-        { contact_code: { $in: contactCodes } },
-        { projection: { contact_id: 1,contact_code: 1, _id: 0 } }
-    ).toArray();
 
+    // const contacts = await collection.find(
+    //     { contact_code: { $in: contactCodes } },
+    //     { projection: { contact_id: 1,contact_code: 1, _id: 0 } }
+    // ).toArray();
+    // Find contacts
+    const contacts = await collection.find({ 
+        contact_code: { $in: [...new Set(contactCodes)] } // Deduplicate codes
+      }).toArray();
+      
+      // Create a map for quick lookup
+      const contactMap = new Map(contacts.map(c => [c.contact_code, c]));
+      
+      // Map each Excel row to a contact (using the first occurrence in the database)
+      const result = contactCodes.map(code => ({
+        contact_id: contactMap.get(code)?.contact_id,
+        contact_code: code
+      }));
+
+      return result;
     // Return array of objects with contact_id property
-    return contacts.map(contact => ({ contact_id: contact.contact_id, contact_code: contact.contact_code }));
+    // return contacts.map(contact => ({ contact_id: contact.contact_id, contact_code: contact.contact_code }));
 };
 
 const createBulkOperation = async (batch, file_name, date, status) => {
