@@ -172,37 +172,44 @@ const BulkUploads = () => {
   const handlePostingUpload = async () => {
     const file = postingFileInputRef.current?.files?.[0];
     if (!file) return;
-
+  
     try {
-      // 1. Read Excel file
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         const data = new Uint8Array(e.target.result);
         const workbook = xlsx.read(data, { type: 'array' });
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = xlsx.utils.sheet_to_json(worksheet);
+        
         if (jsonData.length > 100) {
           toast.error('Excel file cannot contain more than 100 entries');
           postingFileInputRef.current.value = '';
           return;
         }
-
-        // 2. Process each row as a separate payload
-        jsonData.forEach(async (row) => {
-          try {
-            // 3. Create payload from Excel row data
+  
+        // Create batch record once
+        const newRecord = {
+          batch: `BATCH${Date.now().toString().slice(-4)}`,
+          file_name: file.name,
+          date: Math.floor(Date.now() / 1000),
+          status: 'running'
+        };
+  
+        // Add to uploads immediately
+        setUploads(prev => [...prev, newRecord]);
+  
+        try {
+          // Create all API promises
+          const promises = jsonData.map(async (row) => {
             const payload = {
-              id: row['Contact Code'], // Use Contact Code as ID
-              action: row.Action || 'DEBIT', // Default to DEBIT if not specified
-              entity: row.Entity || 'ACCOUNT', // Default to ACCOUNT
+              id: row['Contact Code'],
+              action: row.Action || 'DEBIT',
+              entity: row.Entity || 'ACCOUNT',
               amount: parseFloat(row.Amount) || 0,
               currency_code: row['Currency Code'] || 'MVR',
               notes: row['Notes'] || '',
             };
-
-            console.log(payload, 'apyload comes along')
-
-            // 4. POST to the API endpoint
+  
             const response = await fetch(
               `https://app.crm.com/backoffice/v2/contacts/${payload.id}/journals`,
               {
@@ -214,51 +221,38 @@ const BulkUploads = () => {
                 body: JSON.stringify(payload),
               }
             );
-
+  
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-            const result = await response.json();
-            console.log('Post successful:', result);
-
-            if (response.status) {
-              toast.success('Excel file uploaded successfully');
-              const newRecord = {
-                batch: `BATCH${Date.now().toString().slice(-4)}`,
-                file_name: file.name,
-                date: Math.floor(Date.now() / 1000),
-                status: 'running'
-              };
-
-              const result = await createOperationRecord(newRecord);
-              console.log('createOperationRecord', result);
-              fetchData()
-
-
-              setUploads([...uploads, newRecord]);
-
-
-              setTimeout(() => {
-                setUploads(prev => prev.map(rec =>
-                  rec.batch === newRecord.batch ? { ...rec, status: 'completed' } : rec
-                ));
-                postingFileInputRef.current.value = '';
-              }, 3000);
-
-            }
-            else {
-              toast.error('Failed to upload Excel file');
-            }
-            console.log(uploads, 'uploads data')
-          } catch (error) {
-            console.error('Error processing row:', error);
-            toast.error('An error occurred during file processing!');
-          }
-        });
+            return response.json();
+          });
+  
+          // Wait for all requests to complete
+          await Promise.all(promises);
+  
+          // Create operation record after successful uploads
+          await createOperationRecord(newRecord);
+  
+          // Update status and cleanup
+          setUploads(prev => prev.map(rec =>
+            rec.batch === newRecord.batch ? { ...rec, status: 'completed' } : rec
+          ));
+          
+        } catch (error) {
+          console.error('Error processing rows:', error);
+          toast.error('Some entries failed to process');
+          setUploads(prev => prev.map(rec =>
+            rec.batch === newRecord.batch ? { ...rec, status: 'failed' } : rec
+          ));
+        } finally {
+          // Only call fetchData once after all processing
+          fetchData();
+          postingFileInputRef.current.value = '';
+        }
       };
+  
       reader.readAsArrayBuffer(file);
     } catch (error) {
       console.error('File processing error:', error);
-    } finally {
       postingFileInputRef.current.value = '';
     }
   };
