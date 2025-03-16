@@ -33,14 +33,6 @@ app.use(
 //Define a routes
 app.use('/bulk-uploads', bulkUploadRoutes);
 
-// Serve static files (React/Angular/Vue build)
-app.use(express.static(path.join(__dirname, 'client/build')));
-
-// Handle client-side routing
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
-});
-
 //Default route
 app.get('/', (req, res) => {
   res.send('Hello World!');
